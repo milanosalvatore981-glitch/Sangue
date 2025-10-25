@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#2196F3">
+    <title>Diabete - Calcolo Penna Insulina</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .screen {
+            display: none;
+            height: 100vh;
+            width: 100vw;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        .outer-frame {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bg-image {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
+        }
+
+        .bg-image.active {
+            opacity: 0.3;
+        }
+
+        .inner-frame {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            position: relative;
+            z-index: 10;
+        }
+
+        .inner-frame.gray {
+            background: #f5f5f5;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 24px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid #666;
+        }
+
+        .status-indicator.loaded {
+            background: #4CAF50;
+            border-color: #4CAF50;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: transform 0.1s;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-colazione {
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn-pranzo {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-cena {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-esci {
+            background: #9E9E9E;
+            color: white;
+        }
+
+        .btn-indietro {
+            background: #607D8B;
+            color: white;
+        }
+
+        .btn-salva {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-default {
+            background: #FF9800;
+            color: white;
+        }
+
+        .settings-btn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #757575;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+
+        .settings-btn:active {
+            transform: rotate(90deg) scale(0.95);
+        }
+
+        .gear-icon {
+            width: 35px;
+            height: 35px;
+            position: relative;
+        }
+
+        .gear-center {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 2px solid #333;
+            z-index: 2;
+        }
+
+        .gear-center.loaded {
+            background: #4CAF50;
+            border-color: #4CAF50;
+        }
+
+        .input-group {
+            margin: 20px 0;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            font-size: 18px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .input-group input:read-only {
+            background: #f9f9f9;
+            color: #999;
+        }
+
+        .input-group input:read-only:empty::before {
+            content: 'Risultato';
+            color: #ccc;
+        }
+
+        .button-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .table-container {
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background: #607D8B;
+            color: white;
+            font-weight: bold;
+        }
+
+        td input {
+            width: 100%;
+            padding: 8px;
+            text-align: center;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        td input:read-only {
+            background: #f0f0f0;
+        }
+
+        .icon {
+            font-size: 20px;
+        }
+
+        .bg-azure { background: #2196F3; }
+        .bg-green { background: #4CAF50; }
+        .bg-red { background: #f44336; }
+    </style>
+</head>
+<body>
+    <!-- INTRO SCREEN -->
+    <div id="intro" class="screen active">
+        <div class="outer-frame">
+            <svg class="bg-image active" viewBox="0 0 200 200" style="filter: blur(2px);">
+                <rect fill="#E3F2FD" width="200" height="200"/>
+                <circle cx="100" cy="80" r="30" fill="#2196F3" opacity="0.3"/>
+                <rect x="80" y="110" width="40" height="60" rx="5" fill="#1976D2" opacity="0.3"/>
+                <text x="100" y="95" font-size="40" text-anchor="middle" fill="#0D47A1">123</text>
+            </svg>
+            
+            <div class="inner-frame">
+                <h1>Calcolo Penna Insulina</h1>
+                <button class="btn btn-colazione" onclick="goToScreen('colazione')">Colazione</button>
+                <button class="btn btn-pranzo" onclick="goToScreen('pranzo')">Pranzo</button>
+                <button class="btn btn-cena" onclick="goToScreen('cena')">Cena</button>
+                <button class="btn btn-esci" onclick="exitApp()">✕ Esci</button>
+                
+                <button class="settings-btn" onclick="goToScreen('settings')">
+                    <svg class="gear-icon" viewBox="0 0 24 24">
+                        <path fill="#fff" d="M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8M12,10A2,2 0 0,0 10,12A2,2 0 0,0 12,14A2,2 0 0,0 14,12A2,2 0 0,0 12,10M10,22C9.75,22 9.54,21.82 9.5,21.58L9.13,18.93C8.5,18.68 7.96,18.34 7.44,17.94L4.95,18.95C4.73,19.03 4.46,18.95 4.34,18.73L2.34,15.27C2.21,15.05 2.27,14.78 2.46,14.63L4.57,12.97L4.5,12L4.57,11L2.46,9.37C2.27,9.22 2.21,8.95 2.34,8.73L4.34,5.27C4.46,5.05 4.73,4.96 4.95,5.05L7.44,6.05C7.96,5.66 8.5,5.32 9.13,5.07L9.5,2.42C9.54,2.18 9.75,2 10,2H14C14.25,2 14.46,2.18 14.5,2.42L14.87,5.07C15.5,5.32 16.04,5.66 16.56,6.05L19.05,5.05C19.27,4.96 19.54,5.05 19.66,5.27L21.66,8.73C21.79,8.95 21.73,9.22 21.54,9.37L19.43,11L19.5,12L19.43,13L21.54,14.63C21.73,14.78 21.79,15.05 21.66,15.27L19.66,18.73C19.54,18.95 19.27,19.04 19.05,18.95L16.56,17.95C16.04,18.34 15.5,18.68 14.87,18.93L14.5,21.58C14.46,21.82 14.25,22 14,22H10M11.25,4L10.88,6.61C9.68,6.86 8.62,7.5 7.85,8.39L5.44,7.35L4.69,8.65L6.8,10.2C6.4,11.37 6.4,12.64 6.8,13.8L4.68,15.36L5.43,16.66L7.86,15.62C8.63,16.5 9.68,17.14 10.87,17.38L11.24,20H12.76L13.13,17.39C14.32,17.14 15.37,16.5 16.14,15.62L18.57,16.66L19.32,15.36L17.2,13.81C17.6,12.64 17.6,11.37 17.2,10.2L19.31,8.65L18.56,7.35L16.15,8.39C15.38,7.5 14.32,6.86 13.12,6.62L12.75,4H11.25Z"/>
+                    </svg>
+                    <div class="gear-center" id="gearStatus"></div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- COLAZIONE SCREEN -->
+    <div id="colazione" class="screen">
+        <div class="outer-frame bg-azure">
+            <div class="inner-frame gray">
+                <h1>
+                    Colazione
+                    <div class="status-indicator" id="statusColazione"></div>
+                </h1>
+                <div class="input-group">
+                    <label>Valore Glicemico</label>
+                    <input type="number" id="glicemicoColazione" inputmode="numeric" pattern="[0-9]*" maxlength="5" oninput="calcola('colazione')">
+                </div>
+                <div class="input-group">
+                    <label>Penna Colazione</label>
+                    <input type="text" id="pennaColazione" readonly placeholder="Risultato">
+                </div>
+                <button class="btn btn-indietro" onclick="goToScreen('intro')">← Indietro</button>
+                <button class="btn btn-esci" onclick="exitApp()">✕ Esci</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PRANZO SCREEN -->
+    <div id="pranzo" class="screen">
+        <div class="outer-frame bg-green">
+            <div class="inner-frame gray">
+                <h1>
+                    Pranzo
+                    <div class="status-indicator" id="statusPranzo"></div>
+                </h1>
+                <div class="input-group">
+                    <label>Valore Glicemico</label>
+                    <input type="number" id="glicemicoPranzo" inputmode="numeric" pattern="[0-9]*" maxlength="5" oninput="calcola('pranzo')">
+                </div>
+                <div class="input-group">
+                    <label>Penna Pranzo</label>
+                    <input type="text" id="pennaPranzo" readonly placeholder="Risultato">
+                </div>
+                <button class="btn btn-indietro" onclick="goToScreen('intro')">← Indietro</button>
+                <button class="btn btn-esci" onclick="exitApp()">✕ Esci</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CENA SCREEN -->
+    <div id="cena" class="screen">
+        <div class="outer-frame bg-red">
+            <div class="inner-frame gray">
+                <h1>
+                    Cena
+                    <div class="status-indicator" id="statusCena"></div>
+                </h1>
+                <div class="input-group">
+                    <label>Valore Glicemico</label>
+                    <input type="number" id="glicemicoCena" inputmode="numeric" pattern="[0-9]*" maxlength="5" oninput="calcola('cena')">
+                </div>
+                <div class="input-group">
+                    <label>Penna Cena</label>
+                    <input type="text" id="pennaCena" readonly placeholder="Risultato">
+                </div>
+                <button class="btn btn-indietro" onclick="goToScreen('intro')">← Indietro</button>
+                <button class="btn btn-esci" onclick="exitApp()">✕ Esci</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SETTINGS SCREEN -->
+    <div id="settings" class="screen">
+        <div class="outer-frame" style="background: #90A4AE;">
+            <div class="inner-frame gray" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
+                <h1>Impostazioni</h1>
+                
+                <div class="input-group">
+                    <label>Colazione (valore base)</label>
+                    <input type="number" id="valColazione" inputmode="numeric" pattern="[0-9]*" maxlength="5">
+                </div>
+                <div class="input-group">
+                    <label>Pranzo (valore base)</label>
+                    <input type="number" id="valPranzo" inputmode="numeric" pattern="[0-9]*" maxlength="5">
+                </div>
+                <div class="input-group">
+                    <label>Cena (valore base)</label>
+                    <input type="number" id="valCena" inputmode="numeric" pattern="[0-9]*" maxlength="5">
+                </div>
+
+                <h2 style="margin: 20px 0; text-align: center;">Tabella Riferimenti</h2>
+                <div class="table-container">
+                    <table id="tabella1">
+                        <thead>
+                            <tr>
+                                <th>Range Da</th>
+                                <th>Range A</th>
+                                <th>Riferimento</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabellaBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="button-row">
+                    <button class="btn btn-indietro" onclick="goToScreen('intro')">← Indietro</button>
+                    <button class="btn btn-esci" onclick="exitApp()">✕ Esci</button>
+                    <button class="btn btn-salva" onclick="salvaDati()">💾 Salva Dati</button>
+                    <button class="btn btn-default" onclick="caricaDefault()">🔄 Valori Default</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const DEFAULT_VALUES = {
+            colazione: 6,
+            pranzo: 8,
+            cena: 8,
+            tabella: [
+                { da: 0, a: 100, rif: '-4' },
+                { da: 101, a: 149, rif: '-2' },
+                { da: 150, a: 200, rif: 'BASE' },
+                { da: 201, a: 230, rif: '+1' },
+                { da: 231, a: 300, rif: '+2' },
+                { da: 301, a: 350, rif: '+4' },
+                { da: 351, a: 2000, rif: '+6' },
+                { da: 2001, a: 99999, rif: '****' }
+            ]
+        };
+
+        let appData = JSON.parse(JSON.stringify(DEFAULT_VALUES));
+
+        function init() {
+            caricaDati();
+            aggiornaTabella();
+            aggiornaStatus();
+        }
+
+        function goToScreen(screenName) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenName).classList.add('active');
+        }
+
+        function exitApp() {
+            if (confirm('Vuoi chiudere l\'applicazione?')) {
+                window.close();
+                if (!window.closed) {
+                    alert('Chiudi manualmente l\'app o usa il tasto Home del dispositivo');
+                }
+            }
+        }
+
+        function caricaDati() {
+            const saved = localStorage.getItem('diabeteData');
+            if (saved) {
+                appData = JSON.parse(saved);
+            } else {
+                appData = JSON.parse(JSON.stringify(DEFAULT_VALUES));
+            }
+            
+            document.getElementById('valColazione').value = appData.colazione;
+            document.getElementById('valPranzo').value = appData.pranzo;
+            document.getElementById('valCena').value = appData.cena;
+        }
+
+        function salvaDati() {
+            appData.colazione = parseInt(document.getElementById('valColazione').value) || 6;
+            appData.pranzo = parseInt(document.getElementById('valPranzo').value) || 8;
+            appData.cena = parseInt(document.getElementById('valCena').value) || 8;
+            
+            const rows = document.querySelectorAll('#tabellaBody tr');
+            appData.tabella = [];
+            rows.forEach(row => {
+                const inputs = row.querySelectorAll('input');
+                appData.tabella.push({
+                    da: parseInt(inputs[0].value) || 0,
+                    a: parseInt(inputs[1].value) || 0,
+                    rif: inputs[2].value || '0'
+                });
+            });
+            
+            localStorage.setItem('diabeteData', JSON.stringify(appData));
+            aggiornaStatus();
+            alert('Dati salvati con successo!');
+        }
+
+        function caricaDefault() {
+            if (confirm('Vuoi ripristinare i valori di default?')) {
+                appData = JSON.parse(JSON.stringify(DEFAULT_VALUES));
+                document.getElementById('valColazione').value = appData.colazione;
+                document.getElementById('valPranzo').value = appData.pranzo;
+                document.getElementById('valCena').value = appData.cena;
+                aggiornaTabella();
+                localStorage.setItem('diabeteData', JSON.stringify(appData));
+                aggiornaStatus();
+                alert('Valori di default ripristinati!');
+            }
+        }
+
+        function aggiornaTabella() {
+            const tbody = document.getElementById('tabellaBody');
+            tbody.innerHTML = '';
+            
+            appData.tabella.forEach((row, index) => {
+                const tr = document.createElement('tr');
+                const isLast = index === appData.tabella.length - 1;
+                
+                tr.innerHTML = `
+                    <td><input type="number" value="${row.da}" inputmode="numeric" pattern="[0-9]*" maxlength="5"></td>
+                    <td><input type="number" value="${row.a}" inputmode="numeric" pattern="[0-9]*" maxlength="5"></td>
+                    <td><input type="text" value="${row.rif}" maxlength="5" ${isLast ? 'readonly' : ''}></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function aggiornaStatus() {
+            const saved = localStorage.getItem('diabeteData');
+            const isDefault = !saved || JSON.stringify(appData) === JSON.stringify(DEFAULT_VALUES);
+            
+            const indicators = [
+                document.getElementById('gearStatus'),
+                document.getElementById('statusColazione'),
+                document.getElementById('statusPranzo'),
+                document.getElementById('statusCena')
+            ];
+            
+            indicators.forEach(indicator => {
+                if (indicator) {
+                    if (isDefault) {
+                        indicator.classList.add('loaded');
+                    } else {
+                        indicator.classList.remove('loaded');
+                    }
+                }
+            });
+        }
+
+        function calcola(tipo) {
+            const valore = parseInt(document.getElementById(`glicemico${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`).value);
+            if (isNaN(valore) || valore < 0) {
+                document.getElementById(`penna${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`).value = '';
+                return;
+            }
+
+            let baseValue;
+            if (tipo === 'colazione') baseValue = appData.colazione;
+            else if (tipo === 'pranzo') baseValue = appData.pranzo;
+            else baseValue = appData.cena;
+
+            let riferimento = null;
+            for (let row of appData.tabella) {
+                if (valore >= row.da && valore <= row.a) {
+                    riferimento = row.rif;
+                    break;
+                }
+            }
+
+            let risultato;
+            if (riferimento === '****') {
+                risultato = 'Non Valido';
+            } else if (riferimento === 'BASE') {
+                risultato = baseValue;
+            } else if (riferimento.startsWith('+')) {
+                risultato = baseValue + parseInt(riferimento.substring(1));
+            } else if (riferimento.startsWith('-')) {
+                risultato = baseValue - parseInt(riferimento.substring(1));
+            } else {
+                risultato = baseValue;
+            }
+
+            document.getElementById(`penna${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`).value = risultato;
+        }
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js');
+        }
+
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
